@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Runtime model files (keep the folders)
+backend/storage/inputs/*
+backend/storage/outputs/*
+!backend/storage/inputs/.gitkeep
+!backend/storage/outputs/.gitkeep
+
+# Local tooling
+.claude/

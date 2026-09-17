@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AERO-MESH // 3D Optimization Engine</title>
+  
+  <!-- Google Model Viewer -->
+  <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg-dark: #030712;
+      --panel-bg: rgba(13, 20, 36, 0.65);
+      --border-cyan: rgba(0, 240, 255, 0.35);
+      --neon-cyan: #00f0ff;
+      --neon-green: #00ff88;
+      --neon-purple: #9d4edd;
+      --text-muted: #64748b;
+      --text-main: #f1f5f9;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Rajdhani', sans-serif;
+      background-color: var(--bg-dark);
+      background-image: 
+        radial-gradient(circle at 50% 0%, rgba(0, 240, 255, 0.12) 0%, transparent 60%),
+        radial-gradient(circle at 80% 80%, rgba(157, 78, 221, 0.08) 0%, transparent 50%),
+        linear-gradient(to right, rgba(255,255,255,0.02) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255,255,255,0.02) 1px, transparent 1px);
+      background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
+      color: var(--text-main);
+      min-height: 100vh;
+      padding: 30px 20px;
+      overflow-x: hidden;
+    }
+
+    /* Ambient Scanline Effect */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+      background-size: 100% 4px;
+      pointer-events: none;
+      z-index: 100;
+      opacity: 0.6;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Header */
+    header {
+      text-align: center;
+      margin-bottom: 28px;
+      position: relative;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(0, 240, 255, 0.08);
+      border: 1px solid var(--border-cyan);
+      padding: 4px 14px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--neon-cyan);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      box-shadow: 0 0 15px rgba(0, 240, 255, 0.2);
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      background: var(--neon-green);
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--neon-green);
+      animation: pulse 1.8s infinite;
+    }
+
+    h1 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 32px;
+      letter-spacing: 0.1em;
+      font-weight: 900;
+      background: linear-gradient(135deg, #ffffff 40%, var(--neon-cyan) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 0 30px rgba(0, 240, 255, 0.25);
+    }
+
+    .sub-title {
+      font-size: 14px;
+      color: #94a3b8;
+      letter-spacing: 0.08em;
+      font-weight: 500;
+      margin-top: 4px;
+    }
+
+    /* Control HUD Bar */
+    .control-hud {
+      background: var(--panel-bg);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--border-cyan);
+      border-radius: 16px;
+      padding: 16px 24px;
+      max-width: 820px;
+      margin: 0 auto 30px auto;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 0 15px rgba(0, 240, 255, 0.05);
+    }
+
+    .file-input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    input[type="file"] {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: #cbd5e1;
+      cursor: pointer;
+    }
+
+    input[type="file"]::file-selector-button {
+      background: rgba(0, 240, 255, 0.1);
+      border: 1px solid var(--border-cyan);
+      color: var(--neon-cyan);
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 700;
+      font-size: 13px;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      margin-right: 12px;
+      transition: all 0.2s ease;
+    }
+
+    input[type="file"]::file-selector-button:hover {
+      background: var(--neon-cyan);
+      color: var(--bg-dark);
+      box-shadow: 0 0 15px var(--neon-cyan);
+    }
+
+    .ratio-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    select {
+      background: #090f1d;
+      border: 1px solid var(--border-cyan);
+      color: var(--neon-cyan);
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .hud-btn {
+      background: linear-gradient(135deg, #00f0ff, #0077ff);
+      color: #030712;
+      font-family: 'Orbitron', sans-serif;
+      font-weight: 700;
+      font-size: 13px;
+      letter-spacing: 0.1em;
+      border: none;
+      padding: 10px 22px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 0 20px rgba(0, 240, 255, 0.4);
+    }
+
+    .hud-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 30px rgba(0, 240, 255, 0.7);
+    }
+
+    /* Loading HUD */
+    #loading {
+      display: none;
+      text-align: center;
+      margin-bottom: 24px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      color: var(--neon-cyan);
+      letter-spacing: 0.15em;
+      animation: pulse 1.2s infinite ease-in-out;
+    }
+
+    /* 3D Viewers Grid */
+    .viewers-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 28px;
+    }
+
+    @media (max-width: 900px) {
+      .viewers-grid { grid-template-columns: 1fr; }
+    }
+
+    .view-card {
+      background: var(--panel-bg);
+      backdrop-filter: blur(18px);
+      border: 1px solid rgba(0, 240, 255, 0.2);
+      border-radius: 20px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7), inset 0 0 20px rgba(0, 240, 255, 0.03);
+      transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .view-card:hover {
+      border-color: rgba(0, 240, 255, 0.5);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8), 0 0 25px rgba(0, 240, 255, 0.15);
+    }
+
+    .card-header {
+      padding: 16px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      background: rgba(0, 240, 255, 0.03);
+    }
+
+    .card-label {
+      font-family: 'Orbitron', sans-serif;
+      font-weight: 700;
+      font-size: 14px;
+      letter-spacing: 0.1em;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-label::before {
+      content: "";
+      width: 4px;
+      height: 14px;
+      background: var(--neon-cyan);
+      border-radius: 2px;
+      box-shadow: 0 0 8px var(--neon-cyan);
+    }
+
+    .telemetry-tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      padding: 3px 8px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      color: #94a3b8;
+    }
+
+    /* 3D Viewport Area */
+    .viewport-box {
+      position: relative;
+      height: 420px;
+      background: radial-gradient(circle at 50% 50%, #0c1527 0%, #030712 100%);
+      overflow: hidden;
+    }
+
+    .viewport-box::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border: 1px inset rgba(255, 255, 255, 0.03);
+      pointer-events: none;
+    }
+
+    model-viewer {
+      width: 100%;
+      height: 100%;
+      --poster-color: transparent;
+      cursor: grab;
+    }
+
+    model-viewer:active { cursor: grabbing; }
+
+    /* Telemetry Data Grid */
+    .metrics-panel {
+      padding: 20px;
+      background: rgba(4, 8, 18, 0.7);
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .metric-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 4px;
+      border-bottom: 1px dashed rgba(255, 255, 255, 0.08);
+    }
+
+    .metric-row:last-child { border-bottom: none; }
+
+    .metric-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: #94a3b8;
+      letter-spacing: 0.04em;
+    }
+
+    .metric-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--neon-cyan);
+      text-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+    }
+
+    .reduction-highlight {
+      color: var(--neon-green) !important;
+      text-shadow: 0 0 12px rgba(0, 255, 136, 0.4) !important;
+      font-weight: 700;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.92); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <div class="status-badge">
+        <span class="status-dot"></span> Core System Active // Blender 5.2 Decimator
+      </div>
+      <h1>3D ASSET OPTIMIZATION ENGINE</h1>
+      <p class="sub-title">Automated Real-Time Geometry Decimation & Topology Analysis</p>
+    </header>
+
+    <div class="control-hud">
+      <div class="file-input-wrapper">
+        <input type="file" id="fileInput" accept=".glb,.gltf">
+      </div>
+      
+      <div class="ratio-group">
+        <span>Target Density:</span>
+        <select id="ratioSelect">
+          <option value="0.20">20% (Aggressive)</option>
+          <option value="0.35" selected>35% (Balanced LOD)</option>
+          <option value="0.50">50% (High Poly)</option>
+          <option value="0.75">75% (Subtle)</option>
+        </select>
+      </div>
+
+      <button id="optimizeBtn" class="hud-btn" onclick="runOptimization()">RUN DECIMATION</button>
+    </div>
+
+    <div id="loading">⚡ RUNNING HEADLESS BLENDER COMPILER... EXTRACTING MESH TOPOLOGY</div>
+
+    <div class="viewers-grid">
+      <!-- Original Asset Card -->
+      <div class="view-card">
+        <div class="card-header">
+          <div class="card-label">ORIGINAL MODEL</div>
+          <div class="telemetry-tag">SRC_RAW</div>
+        </div>
+        <div class="viewport-box">
+          <model-viewer id="originalViewer" camera-controls auto-rotate shadow-intensity="1.5" exposure="1.1"></model-viewer>
+        </div>
+        <div class="metrics-panel">
+          <div class="metric-row">
+            <span class="metric-name">Vertices</span>
+            <span class="metric-val" id="orig-vertices">-</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-name">Faces / Polygons</span>
+            <span class="metric-val" id="orig-faces">-</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-name">Surface Area</span>
+            <span class="metric-val" id="orig-area">-</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-name">Bounding Box (X, Y, Z)</span>
+            <span class="metric-val" id="orig-bbox">-</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Optimized Asset Card -->
+      <div class="view-card">
+        <div class="card-header">
+          <div class="card-label" id="optCardTitle">OPTIMIZED MODEL</div>
+          <div class="telemetry-tag" style="border-color: var(--border-cyan); color: var(--neon-cyan);">LOD_PROCESSED</div>
+        </div>
+        <div class="viewport-box">
+          <model-viewer id="optimizedViewer" camera-controls auto-rotate shadow-intensity="1.5" exposure="1.1"></model-viewer>
+        </div>
+        <div class="metrics-panel">
+          <div class="metric-row">
+            <span class="metric-name">Vertices</span>
+            <span class="metric-val" id="opt-vertices">-</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-name">Faces / Polygons</span>
+            <span class="metric-val" id="opt-faces">-</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-name">Surface Area</span>
+            <span class="metric-val" id="opt-area">-</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-name">Polygon Reduction</span>
+            <span class="metric-val reduction-highlight" id="opt-reduction">-</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    async function runOptimization() {
+      const fileInput = document.getElementById('fileInput');
+      const ratio = document.getElementById('ratioSelect').value;
+      const loading = document.getElementById('loading');
+      const btn = document.getElementById('optimizeBtn');
+
+      if (!fileInput.files[0]) {
+        alert("Please select a valid .glb or .gltf asset file.");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("file", fileInput.files[0]);
+      formData.append("ratio", ratio);
+
+      loading.style.display = "block";
+      btn.disabled = true;
+      btn.style.opacity = "0.5";
+
+      try {
+        const response = await fetch("/optimize", {
+          method: "POST",
+          body: formData
+        });
+
+        if (!response.ok) {
+          const errData = await response.json();
+          throw new Error(errData.detail || "Optimization failed on server.");
+        }
+
+        const data = await response.json();
+        
+        // 1. Update 3D Viewers with cache busting
+        document.getElementById('originalViewer').src = data.original_url + "?t=" + Date.now();
+        document.getElementById('optimizedViewer').src = data.optimized_url + "?t=" + Date.now();
+
+        // 2. Populate Original Stats
+        document.getElementById('orig-vertices').innerText = data.original_features.vertex_count.toLocaleString();
+        document.getElementById('orig-faces').innerText = data.original_features.face_count.toLocaleString();
+        document.getElementById('orig-area').innerText = data.original_features.surface_area.toFixed(4);
+        document.getElementById('orig-bbox').innerText = 
+          `${data.original_features.bounding_box_x.toFixed(2)}m × ${data.original_features.bounding_box_y.toFixed(2)}m × ${data.original_features.bounding_box_z.toFixed(2)}m`;
+
+        // 3. Populate Optimized Stats
+        document.getElementById('opt-vertices').innerText = data.optimized_features.vertex_count.toLocaleString();
+        document.getElementById('opt-faces').innerText = data.optimized_features.face_count.toLocaleString();
+        document.getElementById('opt-area').innerText = data.optimized_features.surface_area.toFixed(4);
+        document.getElementById('opt-reduction').innerText = `-${data.polygon_reduction_percent}%`;
+        document.getElementById('optCardTitle').innerText = `OPTIMIZED MODEL (-${data.polygon_reduction_percent}%)`;
+
+      } catch (err) {
+        alert("System Execution Fault: " + err.message);
+      } finally {
+        loading.style.display = "none";
+        btn.disabled = false;
+        btn.style.opacity = "1";
+      }
+    }
+  </script>
+</body>
+</html>
