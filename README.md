@@ -32,6 +32,9 @@ Upload a 3D model (GLB/GLTF/FBX/OBJ), decimate it with Blender, and compare the 
 ```bash
 pip install -r backend/requirements.txt
 python backend/main.py
+----------------------------------------
+.venv\Scripts\python.exe backend\main.py
+----------------------------------------
 ```
 
 Open http://127.0.0.1:8000. If Blender isn't at the default path, set the `BLENDER_PATH` environment variable.
