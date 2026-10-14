@@ -36,6 +36,9 @@
       color: var(--fg);
       font-family: var(--mono);
       font-weight: 300;
+      /* column layout so a short page ends exactly at the viewport bottom */
+      display: flex;
+      flex-direction: column;
       min-height: 100vh;
       min-height: 100dvh;
       overflow-x: hidden;
@@ -70,8 +73,7 @@
     .shell {
       position: relative;
       z-index: 2;
-      min-height: 100vh;
-      min-height: 100dvh;
+      flex: 1;
       display: flex;
       flex-direction: column;
       padding: 22px clamp(16px, 4vw, 44px) 0;
@@ -321,7 +323,10 @@
     }
 
     /* ---------------------------------------------------------- results */
+    /* Kept out of the layout until there is something to show — otherwise the
+       empty panels reserve a screenful of blank space below the hero. */
     .results {
+      display: none;
       width: 100%;
       max-width: 1240px;
       margin: 0 auto;
@@ -330,6 +335,8 @@
       pointer-events: none;
       transition: opacity 1s var(--ease), transform 1s var(--ease);
     }
+
+    .results.revealed { display: block; }
 
     .results.on {
       opacity: 1;
@@ -905,7 +912,7 @@
     /* ------------------------------------------------------------- home */
     document.getElementById('homeBtn').addEventListener('click', function () {
       const results = document.getElementById('results');
-      results.classList.remove('on', 'settled');
+      results.classList.remove('on', 'settled', 'revealed');
       document.getElementById('exportBar').hidden = true;
       document.getElementById('space').classList.remove('recede');
       setStatus('');
@@ -973,9 +980,12 @@
 
         // 4. Reveal results + export
         const results = document.getElementById('results');
-        results.classList.add('on');
+        results.classList.add('revealed');          // into the layout first,
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          results.classList.add('on');              // then fade it in
+        }));
         document.getElementById('space').classList.add('recede');
-        setTimeout(() => results.classList.add('settled'), 1200);
+        setTimeout(() => results.classList.add('settled'), 1400);
         const outName = decodeURIComponent(data.optimized_url.split('/').pop());
         const dlBtn = document.getElementById('downloadBtn');
         dlBtn.href = data.optimized_url;
