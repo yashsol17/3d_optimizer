@@ -3,608 +3,933 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AERO-MESH // 3D Optimization Engine</title>
-  
+  <title>Mesh Optimizer — 3D asset decimation</title>
+
   <!-- Google Model Viewer -->
   <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
-  
+
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
 
   <style>
     :root {
-      --bg-dark: #030712;
-      --panel-bg: rgba(13, 20, 36, 0.65);
-      --border-cyan: rgba(0, 240, 255, 0.35);
-      --neon-cyan: #00f0ff;
-      --neon-green: #00ff88;
-      --neon-purple: #9d4edd;
-      --text-muted: #64748b;
-      --text-main: #f1f5f9;
+      --bg: #050506;
+      --fg: #ece7e3;
+      --dim: #7d7671;
+      --faint: #45403d;
+      --copper: #e2825c;
+      --copper-soft: rgba(226, 130, 92, 0.16);
+      --line: rgba(236, 231, 227, 0.09);
+      --mono: 'JetBrains Mono', ui-monospace, monospace;
+      --serif: 'Instrument Serif', Georgia, serif;
+      --ease: cubic-bezier(0.22, 1, 0.36, 1);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
+    html { -webkit-text-size-adjust: 100%; }
+
     body {
-      font-family: 'Rajdhani', sans-serif;
-      background-color: var(--bg-dark);
-      background-image: 
-        radial-gradient(circle at 50% 0%, rgba(0, 240, 255, 0.12) 0%, transparent 60%),
-        radial-gradient(circle at 80% 80%, rgba(157, 78, 221, 0.08) 0%, transparent 50%),
-        linear-gradient(to right, rgba(255,255,255,0.02) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(255,255,255,0.02) 1px, transparent 1px);
-      background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
-      color: var(--text-main);
+      background: var(--bg);
+      color: var(--fg);
+      font-family: var(--mono);
+      font-weight: 300;
       min-height: 100vh;
-      padding: 30px 20px;
+      min-height: 100dvh;
       overflow-x: hidden;
+      position: relative;
+      letter-spacing: 0.01em;
+      -webkit-font-smoothing: antialiased;
     }
 
-    /* Ambient Scanline Effect */
-    body::before {
+    /* Starfield + wireframe canvas */
+    #space {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      pointer-events: none;
+      transition: opacity 1.4s var(--ease);
+    }
+
+    #space.recede { opacity: 0.4; }
+
+    /* Vignette keeps the edges dark so text stays readable */
+    body::after {
       content: "";
       position: fixed;
       inset: 0;
-      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
-      background-size: 100% 4px;
-      pointer-events: none;
-      z-index: 100;
-      opacity: 0.6;
-    }
-
-    .container {
-      max-width: 1400px;
-      margin: 0 auto;
-      position: relative;
       z-index: 1;
+      pointer-events: none;
+      background: radial-gradient(ellipse at 50% 45%, transparent 35%, rgba(5, 5, 6, 0.55) 78%, rgba(5, 5, 6, 0.92) 100%);
     }
 
-    /* Header */
-    header {
-      text-align: center;
-      margin-bottom: 28px;
+    .shell {
       position: relative;
-    }
-
-    .status-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      background: rgba(0, 240, 255, 0.08);
-      border: 1px solid var(--border-cyan);
-      padding: 4px 14px;
-      border-radius: 999px;
-      font-size: 11px;
-      font-family: 'JetBrains Mono', monospace;
-      color: var(--neon-cyan);
-      letter-spacing: 0.15em;
-      text-transform: uppercase;
-      margin-bottom: 12px;
-      box-shadow: 0 0 15px rgba(0, 240, 255, 0.2);
-    }
-
-    .status-dot {
-      width: 6px;
-      height: 6px;
-      background: var(--neon-green);
-      border-radius: 50%;
-      box-shadow: 0 0 8px var(--neon-green);
-      animation: pulse 1.8s infinite;
-    }
-
-    h1 {
-      font-family: 'Orbitron', sans-serif;
-      font-size: 32px;
-      letter-spacing: 0.1em;
-      font-weight: 900;
-      background: linear-gradient(135deg, #ffffff 40%, var(--neon-cyan) 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      text-shadow: 0 0 30px rgba(0, 240, 255, 0.25);
-    }
-
-    .sub-title {
-      font-size: 14px;
-      color: #94a3b8;
-      letter-spacing: 0.08em;
-      font-weight: 500;
-      margin-top: 4px;
-    }
-
-    /* Control HUD Bar */
-    .control-hud {
-      background: var(--panel-bg);
-      backdrop-filter: blur(16px);
-      border: 1px solid var(--border-cyan);
-      border-radius: 16px;
-      padding: 16px 24px;
-      max-width: 820px;
-      margin: 0 auto 30px auto;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 16px;
-      align-items: center;
-      justify-content: space-between;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 0 15px rgba(0, 240, 255, 0.05);
-    }
-
-    .file-input-wrapper {
-      position: relative;
-      display: flex;
-      align-items: center;
-    }
-
-    input[type="file"] {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 12px;
-      color: #cbd5e1;
-      cursor: pointer;
-    }
-
-    input[type="file"]::file-selector-button {
-      background: rgba(0, 240, 255, 0.1);
-      border: 1px solid var(--border-cyan);
-      color: var(--neon-cyan);
-      padding: 8px 14px;
-      border-radius: 8px;
-      font-family: 'Rajdhani', sans-serif;
-      font-weight: 700;
-      font-size: 13px;
-      letter-spacing: 0.05em;
-      cursor: pointer;
-      margin-right: 12px;
-      transition: all 0.2s ease;
-    }
-
-    input[type="file"]::file-selector-button:hover {
-      background: var(--neon-cyan);
-      color: var(--bg-dark);
-      box-shadow: 0 0 15px var(--neon-cyan);
-    }
-
-    .ratio-group {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 13px;
-      font-weight: 700;
-      color: #94a3b8;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-
-    select {
-      background: #090f1d;
-      border: 1px solid var(--border-cyan);
-      color: var(--neon-cyan);
-      padding: 8px 12px;
-      border-radius: 8px;
-      font-family: 'JetBrains Mono', monospace;
-      font-weight: 600;
-      outline: none;
-      cursor: pointer;
-    }
-
-    .hud-btn {
-      background: linear-gradient(135deg, #00f0ff, #0077ff);
-      color: #030712;
-      font-family: 'Orbitron', sans-serif;
-      font-weight: 700;
-      font-size: 13px;
-      letter-spacing: 0.1em;
-      border: none;
-      padding: 10px 22px;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-      box-shadow: 0 0 20px rgba(0, 240, 255, 0.4);
-    }
-
-    .hud-btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 0 30px rgba(0, 240, 255, 0.7);
-    }
-
-    /* Loading HUD */
-    #loading {
-      display: none;
-      text-align: center;
-      margin-bottom: 24px;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 13px;
-      color: var(--neon-cyan);
-      letter-spacing: 0.15em;
-      animation: pulse 1.2s infinite ease-in-out;
-    }
-
-    /* 3D Viewers Grid */
-    .viewers-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 28px;
-    }
-
-    @media (max-width: 900px) {
-      .viewers-grid { grid-template-columns: 1fr; }
-    }
-
-    .view-card {
-      background: var(--panel-bg);
-      backdrop-filter: blur(18px);
-      border: 1px solid rgba(0, 240, 255, 0.2);
-      border-radius: 20px;
-      overflow: hidden;
+      z-index: 2;
+      min-height: 100vh;
+      min-height: 100dvh;
       display: flex;
       flex-direction: column;
-      position: relative;
-      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7), inset 0 0 20px rgba(0, 240, 255, 0.03);
-      transition: border-color 0.3s ease, box-shadow 0.3s ease;
+      padding: 22px clamp(16px, 4vw, 44px) 0;
     }
 
-    .view-card:hover {
-      border-color: rgba(0, 240, 255, 0.5);
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8), 0 0 25px rgba(0, 240, 255, 0.15);
-    }
-
-    .card-header {
-      padding: 16px 20px;
+    /* ---------------------------------------------------------- top bar */
+    .topbar {
       display: flex;
+      align-items: center;
       justify-content: space-between;
-      align-items: center;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-      background: rgba(0, 240, 255, 0.03);
-    }
-
-    .card-label {
-      font-family: 'Orbitron', sans-serif;
-      font-weight: 700;
-      font-size: 14px;
-      letter-spacing: 0.1em;
-      color: #ffffff;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .card-label::before {
-      content: "";
-      width: 4px;
-      height: 14px;
-      background: var(--neon-cyan);
-      border-radius: 2px;
-      box-shadow: 0 0 8px var(--neon-cyan);
-    }
-
-    .telemetry-tag {
-      font-family: 'JetBrains Mono', monospace;
+      gap: 16px;
       font-size: 11px;
-      padding: 3px 8px;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 4px;
-      color: #94a3b8;
+      letter-spacing: 0.14em;
+      color: var(--dim);
     }
 
-    /* 3D Viewport Area */
-    .viewport-box {
+    .anim .topbar { animation: fade-down 1s var(--ease) both; }
+
+    .wordmark {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      color: var(--fg);
+      font-family: var(--mono);
+      font-weight: 300;
+      font-size: 11.5px;
+      letter-spacing: 0.18em;
+      background: none;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+      transition: color 0.4s var(--ease), opacity 0.4s var(--ease);
+    }
+
+    .wordmark:hover { color: var(--copper); }
+    .wordmark:focus-visible { outline: 1px solid var(--copper); outline-offset: 6px; }
+
+    .orb {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--copper);
+      box-shadow: 0 0 10px var(--copper);
+      animation: breathe 3.4s ease-in-out infinite;
+    }
+
+    .ghost-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      border: 1px solid var(--line);
+      background: transparent;
+      color: var(--fg);
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 400;
+      letter-spacing: 0.16em;
+      padding: 9px 16px;
+      cursor: pointer;
+      transition: border-color 0.5s var(--ease), background 0.5s var(--ease), color 0.5s var(--ease);
+    }
+
+    .ghost-btn:hover:not(:disabled) {
+      border-color: rgba(226, 130, 92, 0.6);
+      background: var(--copper-soft);
+      color: #fff;
+    }
+
+    .ghost-btn:disabled { opacity: 0.35; cursor: progress; }
+
+    .topbar-note {
+      font-size: 10.5px;
+      letter-spacing: 0.16em;
+      color: var(--faint);
+    }
+
+    .run-row {
+      display: flex;
+      justify-content: center;
+      margin-top: 14px;
+    }
+
+    .anim .run-row { animation: fade-up 1.1s var(--ease) 0.52s both; }
+
+    .ghost-btn.run {
+      border-color: rgba(226, 130, 92, 0.45);
+      color: var(--copper);
+      padding: 13px 30px;
+      letter-spacing: 0.2em;
+    }
+
+    .ghost-btn.run:hover:not(:disabled) {
+      background: var(--copper);
+      border-color: var(--copper);
+      color: #140b07;
+    }
+
+    .ghost-btn .arrow { transition: transform 0.5s var(--ease); }
+    .ghost-btn:hover:not(:disabled) .arrow { transform: translateX(4px); }
+
+    /* ------------------------------------------------------------- hero */
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: clamp(40px, 9vh, 90px) 0 36px;
+    }
+
+    .eyebrow {
+      font-size: 10.5px;
+      letter-spacing: 0.34em;
+      color: var(--faint);
+      text-transform: lowercase;
+      margin-bottom: 26px;
+    }
+
+    .anim .eyebrow { animation: fade-up 1.1s var(--ease) 0.1s both; }
+
+    h1 {
+      font-family: var(--serif);
+      font-weight: 400;
+      font-size: clamp(38px, 8.2vw, 92px);
+      line-height: 1.02;
+      letter-spacing: -0.015em;
+      color: var(--fg);
+    }
+
+    .anim h1 { animation: fade-up 1.1s var(--ease) 0.2s both; }
+
+    h1 em {
+      font-style: italic;
+      color: var(--copper);
+    }
+
+    .tagline {
+      margin-top: 22px;
+      max-width: 42ch;
+      font-size: clamp(12px, 1.5vw, 13.5px);
+      line-height: 1.85;
+      color: var(--dim);
+    }
+
+    .anim .tagline { animation: fade-up 1.1s var(--ease) 0.32s both; }
+
+    /* ----------------------------------------------------------- console */
+    .console {
+      margin-top: clamp(34px, 6vh, 56px);
+      display: flex;
+      align-items: stretch;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .anim .console { animation: fade-up 1.1s var(--ease) 0.44s both; }
+
+    .field {
       position: relative;
-      height: 420px;
-      background: radial-gradient(circle at 50% 50%, #0c1527 0%, #030712 100%);
-      overflow: hidden;
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      border: 1px solid var(--line);
+      padding: 10px 16px;
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      color: var(--dim);
+      background: rgba(255, 255, 255, 0.012);
+      transition: border-color 0.5s var(--ease);
+      min-height: 42px;
     }
 
-    .viewport-box::after {
+    .field:hover, .field:focus-within { border-color: rgba(236, 231, 227, 0.26); }
+
+    .field label { color: var(--faint); letter-spacing: 0.16em; white-space: nowrap; }
+
+    .file-name {
+      color: var(--fg);
+      max-width: 34vw;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .file-name.empty { color: var(--faint); }
+
+    input[type="file"] { display: none; }
+
+    .pick {
+      background: none;
+      border: none;
+      color: var(--copper);
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      cursor: pointer;
+      padding: 0;
+      border-bottom: 1px solid transparent;
+      transition: border-color 0.4s var(--ease);
+    }
+
+    .pick:hover { border-bottom-color: var(--copper); }
+
+    select {
+      appearance: none;
+      background: transparent;
+      border: none;
+      color: var(--fg);
+      font-family: var(--mono);
+      font-weight: 300;
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      cursor: pointer;
+      outline: none;
+      padding-right: 14px;
+    }
+
+    select option { background: #0b0b0d; color: var(--fg); }
+
+    .caret {
+      position: absolute;
+      right: 14px;
+      color: var(--faint);
+      pointer-events: none;
+      font-size: 9px;
+    }
+
+    /* ----------------------------------------------------------- status */
+    .status {
+      margin-top: 26px;
+      height: 16px;
+      font-size: 10.5px;
+      letter-spacing: 0.22em;
+      color: var(--copper);
+      opacity: 0;
+      transition: opacity 0.6s var(--ease);
+    }
+
+    .status.on { opacity: 1; }
+    .status.err { color: #e2605c; letter-spacing: 0.12em; }
+
+    .status .dots::after {
+      content: "";
+      animation: dots 1.6s steps(4, end) infinite;
+    }
+
+    /* ---------------------------------------------------------- results */
+    .results {
+      width: 100%;
+      max-width: 1240px;
+      margin: 0 auto;
+      opacity: 0;
+      transform: translateY(26px);
+      pointer-events: none;
+      transition: opacity 1s var(--ease), transform 1s var(--ease);
+    }
+
+    .results.on {
+      opacity: 1;
+      transform: none;
+      pointer-events: auto;
+    }
+
+    /* Same safety net as the entry animations: the reveal must not depend on
+       the transition actually running to completion. */
+    .results.settled {
+      opacity: 1;
+      transform: none;
+      transition: none;
+    }
+
+    .panels {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: clamp(16px, 3vw, 40px);
+      margin-top: clamp(30px, 6vh, 56px);
+      text-align: left;
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .panel-name {
+      font-size: 11px;
+      letter-spacing: 0.22em;
+      color: var(--fg);
+    }
+
+    .panel-tag {
+      font-size: 10px;
+      letter-spacing: 0.16em;
+      color: var(--faint);
+    }
+
+    .panel.optimized .panel-tag { color: var(--copper); }
+
+    .stage {
+      position: relative;
+      height: clamp(240px, 38vh, 400px);
+      margin: 6px 0 4px;
+    }
+
+    .stage::before {
       content: "";
       position: absolute;
       inset: 0;
-      border: 1px inset rgba(255, 255, 255, 0.03);
+      background: radial-gradient(ellipse at 50% 55%, rgba(226, 130, 92, 0.07), transparent 68%);
       pointer-events: none;
     }
 
     model-viewer {
       width: 100%;
       height: 100%;
+      background: transparent;
       --poster-color: transparent;
+      --progress-bar-color: var(--copper);
       cursor: grab;
     }
 
     model-viewer:active { cursor: grabbing; }
 
-    /* Telemetry Data Grid */
-    .metrics-panel {
-      padding: 20px;
-      background: rgba(4, 8, 18, 0.7);
-      border-top: 1px solid rgba(255, 255, 255, 0.05);
-    }
+    .stats { border-top: 1px solid var(--line); }
 
-    .metric-row {
+    .stat {
       display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 10px 4px;
-      border-bottom: 1px dashed rgba(255, 255, 255, 0.08);
-    }
-
-    .metric-row:last-child { border-bottom: none; }
-
-    .metric-name {
-      font-size: 14px;
-      font-weight: 600;
-      color: #94a3b8;
-      letter-spacing: 0.04em;
-    }
-
-    .metric-val {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--neon-cyan);
-      text-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
-    }
-
-    .reduction-highlight {
-      color: var(--neon-green) !important;
-      text-shadow: 0 0 12px rgba(0, 255, 136, 0.4) !important;
-      font-weight: 700;
-    }
-
-    /* Export / Download Bar */
-    .export-bar {
-      display: none;
       align-items: center;
       justify-content: space-between;
-      gap: 20px;
-      flex-wrap: wrap;
-      max-width: 820px;
-      margin: 28px auto 0 auto;
-      padding: 16px 22px;
-      background: var(--panel-bg);
-      backdrop-filter: blur(16px);
-      border: 1px solid rgba(0, 255, 136, 0.35);
-      border-radius: 16px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 0 15px rgba(0, 255, 136, 0.05);
-      animation: bar-reveal 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+      gap: 14px;
+      padding: 11px 0;
+      border-bottom: 1px solid rgba(236, 231, 227, 0.045);
+      font-size: 11px;
     }
 
-    .export-bar.visible { display: flex; }
+    .stat:last-child { border-bottom: none; }
 
-    .export-info {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      min-width: 0;
-    }
-
-    .export-title {
-      font-family: 'Orbitron', sans-serif;
-      font-weight: 700;
-      font-size: 13px;
+    .stat .k {
+      color: var(--dim);
       letter-spacing: 0.1em;
-      color: #ffffff;
-      display: flex;
-      align-items: center;
-      gap: 8px;
+      font-weight: 300;
     }
 
-    .export-title::before {
-      content: "";
-      width: 4px;
-      height: 14px;
-      background: var(--neon-green);
-      border-radius: 2px;
-      box-shadow: 0 0 8px var(--neon-green);
+    .stat .v {
+      color: var(--fg);
+      font-weight: 400;
+      letter-spacing: 0.04em;
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+    }
+
+    .stat .v.hi {
+      color: var(--copper);
+    }
+
+    /* ----------------------------------------------------------- export */
+    .export {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 14px 24px;
+      margin-top: clamp(26px, 5vh, 44px);
+      padding-top: 20px;
+      border-top: 1px solid var(--line);
+      text-align: left;
     }
 
     .export-meta {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 11px;
-      color: var(--text-muted);
-      letter-spacing: 0.08em;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      max-width: min(460px, 100%);
+      font-size: 10.5px;
+      letter-spacing: 0.1em;
+      color: var(--faint);
+      overflow-wrap: anywhere;
     }
 
-    .download-btn {
-      position: relative;
-      overflow: hidden;
+    .export-meta b {
+      color: var(--dim);
+      font-weight: 400;
+    }
+
+    .download {
       display: inline-flex;
       align-items: center;
-      gap: 10px;
-      background: linear-gradient(135deg, #00ff88, #00b36b);
-      color: #030712;
-      font-family: 'Orbitron', sans-serif;
-      font-weight: 700;
-      font-size: 13px;
-      letter-spacing: 0.1em;
+      gap: 12px;
+      border: 1px solid rgba(226, 130, 92, 0.42);
+      color: var(--copper);
       text-decoration: none;
-      border: none;
-      padding: 11px 24px;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-      box-shadow: 0 0 20px rgba(0, 255, 136, 0.35);
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      padding: 11px 20px;
+      transition: background 0.5s var(--ease), color 0.5s var(--ease), border-color 0.5s var(--ease);
+      white-space: nowrap;
     }
 
-    .download-btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 0 32px rgba(0, 255, 136, 0.7);
+    .download:hover {
+      background: var(--copper);
+      border-color: var(--copper);
+      color: #140b07;
     }
 
-    .download-btn:active { transform: translateY(0); }
-
-    /* Sheen sweep on hover */
-    .download-btn::after {
-      content: "";
-      position: absolute;
-      top: 0;
-      left: -120%;
-      width: 60%;
-      height: 100%;
-      background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.55), transparent);
-      transform: skewX(-20deg);
-    }
-
-    .download-btn:hover::after { animation: sheen 0.7s ease; }
-
-    .download-btn svg {
-      width: 15px;
-      height: 15px;
-      stroke: #030712;
-      stroke-width: 2.4;
+    .download svg {
+      width: 13px;
+      height: 13px;
       fill: none;
+      stroke: currentColor;
+      stroke-width: 1.6;
       stroke-linecap: round;
       stroke-linejoin: round;
-      animation: nudge 2.2s infinite ease-in-out;
+      transition: transform 0.5s var(--ease);
     }
 
-    @keyframes sheen {
-      from { left: -120%; }
-      to { left: 140%; }
+    .download:hover svg { transform: translateY(2px); }
+
+    /* ----------------------------------------------------------- footer */
+    footer {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px 22px;
+      flex-wrap: wrap;
+      padding: 30px clamp(16px, 4vw, 44px) 26px;
+      font-size: 10px;
+      letter-spacing: 0.16em;
+      color: var(--faint);
+      text-align: center;
     }
 
-    @keyframes nudge {
-      0%, 70%, 100% { transform: translateY(0); }
-      80% { transform: translateY(2px); }
+    footer a {
+      color: var(--dim);
+      text-decoration: none;
+      border-bottom: 1px solid transparent;
+      transition: color 0.4s var(--ease), border-color 0.4s var(--ease);
     }
 
-    @keyframes bar-reveal {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
+    footer a:hover { color: var(--copper); border-bottom-color: var(--copper); }
+
+    .sep { color: var(--faint); opacity: 0.5; }
+
+    /* ------------------------------------------------------- animations */
+    @keyframes fade-up {
+      from { opacity: 0; transform: translateY(18px); }
+      to { opacity: 1; transform: none; }
     }
 
-    @media (max-width: 600px) {
-      .export-bar { justify-content: center; text-align: center; }
-      .export-info { align-items: center; }
-      .download-btn { width: 100%; justify-content: center; }
+    @keyframes fade-down {
+      from { opacity: 0; transform: translateY(-12px); }
+      to { opacity: 1; transform: none; }
     }
 
-    @keyframes pulse {
+    @keyframes breathe {
       0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.4; transform: scale(0.92); }
+      50% { opacity: 0.45; transform: scale(0.82); }
+    }
+
+    @keyframes dots {
+      0% { content: ""; }
+      25% { content: "."; }
+      50% { content: ".."; }
+      75% { content: "..."; }
+    }
+
+    /* ------------------------------------------------------- responsive */
+    @media (max-width: 860px) {
+      .panels { grid-template-columns: 1fr; gap: 34px; }
+      .file-name { max-width: 50vw; }
+      .console { width: 100%; }
+      .field { flex: 1 1 100%; justify-content: space-between; }
+      .run-row { width: 100%; }
+      .ghost-btn.run { width: 100%; justify-content: center; }
+      .topbar-note { display: none; }
+    }
+
+    @media (max-width: 520px) {
+      .eyebrow { letter-spacing: 0.24em; }
+      .topbar { font-size: 10px; }
+      .export { flex-direction: column; align-items: flex-start; }
+      .download { width: 100%; justify-content: center; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+      }
     }
   </style>
 </head>
 <body>
+  <canvas id="space"></canvas>
 
-  <div class="container">
-    <header>
-      <div class="status-badge">
-        <span class="status-dot"></span> Core System Active // Blender 5.2 Decimator
-      </div>
-      <h1>3D ASSET OPTIMIZATION ENGINE</h1>
-      <p class="sub-title">Automated Real-Time Geometry Decimation & Topology Analysis</p>
+  <div class="shell">
+    <header class="topbar">
+      <button class="wordmark" id="homeBtn" type="button" title="back to start"><span class="orb"></span>mesh optimizer</button>
+      <span class="topbar-note">local pipeline · blender</span>
     </header>
 
-    <div class="control-hud">
-      <div class="file-input-wrapper">
-        <input type="file" id="fileInput" accept=".glb,.gltf">
-      </div>
-      
-      <div class="ratio-group">
-        <span>Target Density:</span>
-        <select id="ratioSelect">
-          <option value="0.20">20% (Aggressive)</option>
-          <option value="0.35" selected>35% (Balanced LOD)</option>
-          <option value="0.50">50% (High Poly)</option>
-          <option value="0.75">75% (Subtle)</option>
-        </select>
-      </div>
+    <main>
+      <p class="eyebrow">automated geometry decimation</p>
+      <h1>lighter meshes,<br><em>same silhouette</em></h1>
+      <p class="tagline">
+        Drop in a 3D asset. It is analysed, decimated in headless Blender,
+        and returned side by side with the original — measured, not guessed.
+      </p>
 
-      <button id="optimizeBtn" class="hud-btn" onclick="runOptimization()">RUN DECIMATION</button>
-    </div>
-
-    <div id="loading">⚡ RUNNING HEADLESS BLENDER COMPILER... EXTRACTING MESH TOPOLOGY</div>
-
-    <div class="viewers-grid">
-      <!-- Original Asset Card -->
-      <div class="view-card">
-        <div class="card-header">
-          <div class="card-label">ORIGINAL MODEL</div>
-          <div class="telemetry-tag">SRC_RAW</div>
+      <div class="console">
+        <div class="field">
+          <label for="fileInput">asset</label>
+          <span class="file-name empty" id="fileName">no file selected</span>
+          <button class="pick" id="pickBtn" type="button">browse</button>
+          <input type="file" id="fileInput" accept=".glb,.gltf">
         </div>
-        <div class="viewport-box">
-          <model-viewer id="originalViewer" camera-controls auto-rotate shadow-intensity="1.5" exposure="1.1"></model-viewer>
-        </div>
-        <div class="metrics-panel">
-          <div class="metric-row">
-            <span class="metric-name">Vertices</span>
-            <span class="metric-val" id="orig-vertices">-</span>
-          </div>
-          <div class="metric-row">
-            <span class="metric-name">Faces / Polygons</span>
-            <span class="metric-val" id="orig-faces">-</span>
-          </div>
-          <div class="metric-row">
-            <span class="metric-name">Surface Area</span>
-            <span class="metric-val" id="orig-area">-</span>
-          </div>
-          <div class="metric-row">
-            <span class="metric-name">Bounding Box (X, Y, Z)</span>
-            <span class="metric-val" id="orig-bbox">-</span>
-          </div>
+
+        <div class="field">
+          <label for="ratioSelect">density</label>
+          <select id="ratioSelect">
+            <option value="0.20">20% · aggressive</option>
+            <option value="0.35" selected>35% · balanced</option>
+            <option value="0.50">50% · high poly</option>
+            <option value="0.75">75% · subtle</option>
+          </select>
+          <span class="caret">&#9662;</span>
         </div>
       </div>
 
-      <!-- Optimized Asset Card -->
-      <div class="view-card">
-        <div class="card-header">
-          <div class="card-label" id="optCardTitle">OPTIMIZED MODEL</div>
-          <div class="telemetry-tag" style="border-color: var(--border-cyan); color: var(--neon-cyan);">LOD_PROCESSED</div>
-        </div>
-        <div class="viewport-box">
-          <model-viewer id="optimizedViewer" camera-controls auto-rotate shadow-intensity="1.5" exposure="1.1"></model-viewer>
-        </div>
-        <div class="metrics-panel">
-          <div class="metric-row">
-            <span class="metric-name">Vertices</span>
-            <span class="metric-val" id="opt-vertices">-</span>
-          </div>
-          <div class="metric-row">
-            <span class="metric-name">Faces / Polygons</span>
-            <span class="metric-val" id="opt-faces">-</span>
-          </div>
-          <div class="metric-row">
-            <span class="metric-name">Surface Area</span>
-            <span class="metric-val" id="opt-area">-</span>
-          </div>
-          <div class="metric-row">
-            <span class="metric-name">Polygon Reduction</span>
-            <span class="metric-val reduction-highlight" id="opt-reduction">-</span>
-          </div>
-        </div>
+      <div class="run-row">
+        <button class="ghost-btn run" id="runBtn" onclick="runOptimization()">
+          run decimation <span class="arrow">&#8599;</span>
+        </button>
       </div>
-    </div>
 
-    <!-- Export Bar -->
-    <div class="export-bar" id="exportBar">
-      <div class="export-info">
-        <div class="export-title">EXPORT READY</div>
-        <div class="export-meta" id="exportMeta">-</div>
-      </div>
-      <a class="download-btn" id="downloadBtn" href="#" download>
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M12 3v12" />
-          <path d="M7 11l5 5 5-5" />
-          <path d="M4 20h16" />
-        </svg>
-        DOWNLOAD MODEL
-      </a>
-    </div>
+      <p class="status" id="status"></p>
+
+      <section class="results" id="results" aria-live="polite">
+        <div class="panels">
+          <article class="panel">
+            <div class="panel-head">
+              <span class="panel-name">original</span>
+              <span class="panel-tag">source</span>
+            </div>
+            <div class="stage">
+              <model-viewer id="originalViewer" camera-controls auto-rotate rotation-per-second="18deg" environment-image="neutral"
+                            shadow-intensity="0.6" exposure="1.35" interaction-prompt="none"></model-viewer>
+            </div>
+            <div class="stats">
+              <div class="stat"><span class="k">vertices</span><span class="v" id="orig-vertices">—</span></div>
+              <div class="stat"><span class="k">faces</span><span class="v" id="orig-faces">—</span></div>
+              <div class="stat"><span class="k">surface area</span><span class="v" id="orig-area">—</span></div>
+              <div class="stat"><span class="k">bounding box</span><span class="v" id="orig-bbox">—</span></div>
+            </div>
+          </article>
+
+          <article class="panel optimized">
+            <div class="panel-head">
+              <span class="panel-name" id="optCardTitle">optimized</span>
+              <span class="panel-tag" id="optTag">decimated</span>
+            </div>
+            <div class="stage">
+              <model-viewer id="optimizedViewer" camera-controls auto-rotate rotation-per-second="18deg" environment-image="neutral"
+                            shadow-intensity="0.6" exposure="1.35" interaction-prompt="none"></model-viewer>
+            </div>
+            <div class="stats">
+              <div class="stat"><span class="k">vertices</span><span class="v" id="opt-vertices">—</span></div>
+              <div class="stat"><span class="k">faces</span><span class="v" id="opt-faces">—</span></div>
+              <div class="stat"><span class="k">surface area</span><span class="v" id="opt-area">—</span></div>
+              <div class="stat"><span class="k">reduction</span><span class="v hi" id="opt-reduction">—</span></div>
+            </div>
+          </article>
+        </div>
+
+        <div class="export" id="exportBar" hidden>
+          <span class="export-meta" id="exportMeta">—</span>
+          <a class="download" id="downloadBtn" href="#" download>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 3v12" /><path d="M7 11l5 5 5-5" /><path d="M4 20h16" />
+            </svg>
+            download model
+          </a>
+        </div>
+      </section>
+    </main>
   </div>
 
+  <footer>
+    <span>fastapi · trimesh · blender · model-viewer</span>
+    <span class="sep">/</span>
+    <a href="https://github.com/yashsol17/3d_optimizer" target="_blank" rel="noopener">github.com/yashsol17/3d_optimizer</a>
+    <span class="sep">/</span>
+    <span>2026</span>
+  </footer>
+
   <script>
+    /* Entry animations are an enhancement: if frames are throttled (hidden tab,
+       background render) the markup must still end up visible, so the class is
+       added only when we can animate and removed once the sequence is over. */
+    (function entrance() {
+      const root = document.documentElement;
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      root.classList.add('anim');
+      const settle = () => root.classList.remove('anim');
+      setTimeout(settle, 2600);
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') settle();
+      });
+    })();
+
+    /* ------------------------------------------------ starfield + wireframe */
+    (function space() {
+      const canvas = document.getElementById('space');
+      const ctx = canvas.getContext('2d');
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      let w = 0, h = 0, dpr = 1, stars = [], meteors = [], t = 0;
+      let spin = 0, speed = 0.0016, glowSprite = null;
+      const nebula = document.createElement('canvas');
+      const nctx = nebula.getContext('2d');
+      const mouse = { x: 0, y: 0, tx: 0, ty: 0 };
+
+      // Soft coloured clouds, painted once and then drifted — depth without cost.
+      function buildNebula() {
+        nebula.width = w; nebula.height = h;
+        nctx.clearRect(0, 0, w, h);
+        const blobs = [
+          { x: 0.20, y: 0.26, r: 0.60, c: '226, 130, 92', a: 0.115 },
+          { x: 0.82, y: 0.58, r: 0.62, c: '126, 86, 168', a: 0.09 },
+          { x: 0.52, y: 0.92, r: 0.70, c: '58, 116, 150', a: 0.075 },
+          { x: 0.66, y: 0.12, r: 0.40, c: '212, 108, 120', a: 0.06 }
+        ];
+        for (const b of blobs) {
+          const g = nctx.createRadialGradient(b.x * w, b.y * h, 0, b.x * w, b.y * h, b.r * Math.max(w, h));
+          g.addColorStop(0, 'rgba(' + b.c + ', ' + b.a + ')');
+          g.addColorStop(0.55, 'rgba(' + b.c + ', ' + (b.a * 0.28) + ')');
+          g.addColorStop(1, 'rgba(0, 0, 0, 0)');
+          nctx.fillStyle = g;
+          nctx.fillRect(0, 0, w, h);
+        }
+      }
+
+      // One reusable glow sprite for the brightest stars and the orbit marker
+      function buildGlow() {
+        glowSprite = document.createElement('canvas');
+        glowSprite.width = glowSprite.height = 34;
+        const gc = glowSprite.getContext('2d');
+        const g = gc.createRadialGradient(17, 17, 0, 17, 17, 17);
+        g.addColorStop(0, 'rgba(255, 238, 228, 0.95)');
+        g.addColorStop(0.28, 'rgba(226, 130, 92, 0.38)');
+        g.addColorStop(1, 'rgba(226, 130, 92, 0)');
+        gc.fillStyle = g;
+        gc.fillRect(0, 0, 34, 34);
+      }
+
+      function resize() {
+        dpr = Math.min(window.devicePixelRatio || 1, 2);
+        w = window.innerWidth;
+        h = window.innerHeight;
+        canvas.width = w * dpr;
+        canvas.height = h * dpr;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        const count = Math.round(Math.min(420, (w * h) / 4200));
+        stars = Array.from({ length: count }, function () {
+          const z = Math.random();
+          return {
+            x: Math.random() * w,
+            y: Math.random() * h,
+            z: z * 0.85 + 0.15,
+            p: Math.random() * Math.PI * 2,
+            warm: Math.random() < 0.22,
+            bright: z > 0.965
+          };
+        });
+        buildNebula();
+        if (!glowSprite) buildGlow();
+      }
+
+      function spawnMeteor() {
+        meteors.push({
+          x: Math.random() < 0.5 ? -60 : w * (0.25 + Math.random() * 0.6),
+          y: Math.random() * h * 0.5,
+          vx: 5.5 + Math.random() * 3.5,
+          vy: 1.8 + Math.random() * 1.6,
+          len: 90 + Math.random() * 120,
+          life: 1
+        });
+      }
+
+      // Rotating wireframe globe — the centrepiece behind the type
+      function globe(cx, cy, r) {
+        const rings = 9, seg = 48;
+        ctx.lineWidth = 0.6;
+        for (let i = 1; i < rings; i++) {
+          const lat = (i / rings) * Math.PI - Math.PI / 2;
+          ctx.beginPath();
+          for (let j = 0; j <= seg; j++) {
+            const lon = (j / seg) * Math.PI * 2 + spin;
+            const px = cx + Math.cos(lat) * Math.sin(lon) * r;
+            const py = cy + Math.sin(lat) * r * 0.62 + Math.cos(lat) * Math.cos(lon) * 10;
+            j ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+          }
+          ctx.strokeStyle = 'rgba(226, 130, 92, ' + (0.09 + 0.07 * Math.cos(lat)) + ')';
+          ctx.stroke();
+        }
+        for (let j = 0; j < seg / 2; j++) {
+          const lon = (j / (seg / 2)) * Math.PI * 2 + spin;
+          ctx.beginPath();
+          for (let i = 0; i <= 26; i++) {
+            const lat = (i / 26) * Math.PI - Math.PI / 2;
+            const px = cx + Math.cos(lat) * Math.sin(lon) * r;
+            const py = cy + Math.sin(lat) * r * 0.62 + Math.cos(lat) * Math.cos(lon) * 10;
+            i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+          }
+          const depth = (Math.cos(lon) + 1) / 2;
+          ctx.strokeStyle = 'rgba(226, 130, 92, ' + (0.045 + depth * 0.1) + ')';
+          ctx.stroke();
+        }
+
+        const halo = ctx.createRadialGradient(cx, cy, r * 0.75, cx, cy, r * 1.5);
+        halo.addColorStop(0, 'rgba(226, 130, 92, 0.085)');
+        halo.addColorStop(1, 'rgba(226, 130, 92, 0)');
+        ctx.fillStyle = halo;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r * 1.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        const ox = cx + Math.cos(spin * 2.4) * r * 1.22;
+        const oy = cy + Math.sin(spin * 2.4) * r * 0.42;
+        ctx.globalAlpha = 0.75;
+        ctx.drawImage(glowSprite, ox - 9, oy - 9, 18, 18);
+        ctx.globalAlpha = 1;
+      }
+
+      function frame() {
+        t += 1;
+        mouse.x += (mouse.tx - mouse.x) * 0.045;
+        mouse.y += (mouse.ty - mouse.y) * 0.045;
+        spin += speed;
+
+        ctx.clearRect(0, 0, w, h);
+
+        ctx.drawImage(nebula,
+          Math.sin(t * 0.0006) * 26 + mouse.x * 14,
+          Math.cos(t * 0.0005) * 20 + mouse.y * 10);
+
+        for (const s of stars) {
+          const px = s.x + mouse.x * s.z * 30;
+          const py = s.y + mouse.y * s.z * 30;
+          const twinkle = 0.4 + 0.6 * Math.abs(Math.sin(t * 0.013 * s.z + s.p));
+
+          if (s.bright) {
+            ctx.globalAlpha = twinkle * 0.6;
+            ctx.drawImage(glowSprite, px - 7, py - 7, 14, 14);
+          }
+          ctx.globalAlpha = twinkle * (0.3 + s.z * 0.7);
+          ctx.fillStyle = s.warm ? '#f0c3ad' : (s.z > 0.75 ? '#f6ece6' : '#9a9390');
+          const size = s.z > 0.82 ? 1.7 : 1.15;
+          ctx.fillRect(px, py, size, size);
+        }
+        ctx.globalAlpha = 1;
+
+        if (!reduced && Math.random() < 0.004 && meteors.length < 2) spawnMeteor();
+        for (let i = meteors.length - 1; i >= 0; i--) {
+          const m = meteors[i];
+          m.x += m.vx; m.y += m.vy; m.life -= 0.0075;
+          if (m.life <= 0 || m.x > w + 120 || m.y > h + 120) { meteors.splice(i, 1); continue; }
+          const tailX = m.x - m.len;
+          const tailY = m.y - m.len * (m.vy / m.vx);
+          const g = ctx.createLinearGradient(m.x, m.y, tailX, tailY);
+          g.addColorStop(0, 'rgba(255, 234, 221, ' + (0.75 * m.life) + ')');
+          g.addColorStop(1, 'rgba(226, 130, 92, 0)');
+          ctx.strokeStyle = g;
+          ctx.lineWidth = 1.4;
+          ctx.beginPath();
+          ctx.moveTo(m.x, m.y);
+          ctx.lineTo(tailX, tailY);
+          ctx.stroke();
+        }
+
+        const r = Math.min(w, h) * (w < 760 ? 0.3 : 0.26);
+        globe(w / 2 + mouse.x * 16, h * 0.46 + mouse.y * 12, r);
+
+        requestAnimationFrame(frame);
+      }
+
+      window.addEventListener('resize', resize, { passive: true });
+      window.addEventListener('pointermove', function (e) {
+        mouse.tx = (e.clientX / window.innerWidth - 0.5) * 2;
+        mouse.ty = (e.clientY / window.innerHeight - 0.5) * 2;
+      }, { passive: true });
+
+      resize();
+      if (reduced) {
+        ctx.drawImage(nebula, 0, 0);
+        for (const s of stars) {
+          ctx.globalAlpha = 0.35 + s.z * 0.45;
+          ctx.fillStyle = s.warm ? '#f0c3ad' : '#9a9390';
+          ctx.fillRect(s.x, s.y, 1.3, 1.3);
+        }
+        ctx.globalAlpha = 1;
+        globe(w / 2, h * 0.46, Math.min(w, h) * 0.26);
+      } else {
+        frame();
+      }
+
+      // The globe spins faster while Blender is working
+      window.__spin = function (fast) { speed = fast ? 0.009 : 0.0016; };
+    })();
+
+    /* ------------------------------------------------------- file picking */
+    const fileInput = document.getElementById('fileInput');
+    const fileName = document.getElementById('fileName');
+    document.getElementById('pickBtn').addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', () => {
+      const f = fileInput.files[0];
+      fileName.textContent = f ? f.name : 'no file selected';
+      fileName.classList.toggle('empty', !f);
+    });
+
+    function setStatus(text, isError) {
+      const el = document.getElementById('status');
+      el.classList.toggle('err', !!isError);
+      el.innerHTML = text ? (isError ? text : text + '<span class="dots"></span>') : '';
+      el.classList.toggle('on', !!text);
+    }
+
+    /* ------------------------------------------------------------- home */
+    document.getElementById('homeBtn').addEventListener('click', function () {
+      const results = document.getElementById('results');
+      results.classList.remove('on', 'settled');
+      document.getElementById('exportBar').hidden = true;
+      document.getElementById('space').classList.remove('recede');
+      setStatus('');
+
+      // release both WebGL scenes and reset the readouts
+      for (const mv of document.querySelectorAll('model-viewer')) mv.removeAttribute('src');
+      for (const v of document.querySelectorAll('.stat .v')) v.innerText = '\u2014';
+      document.getElementById('optTag').innerText = 'decimated';
+
+      fileInput.value = '';
+      fileName.textContent = 'no file selected';
+      fileName.classList.add('empty');
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    /* --------------------------------------------------------- optimization */
     async function runOptimization() {
-      const fileInput = document.getElementById('fileInput');
       const ratio = document.getElementById('ratioSelect').value;
-      const loading = document.getElementById('loading');
-      const btn = document.getElementById('optimizeBtn');
+      const btn = document.getElementById('runBtn');
+      const exportBar = document.getElementById('exportBar');
 
       if (!fileInput.files[0]) {
-        alert("Please select a valid .glb or .gltf asset file.");
+        setStatus('select a .glb or .gltf asset first', true);
         return;
       }
 
@@ -612,69 +937,71 @@
       formData.append("file", fileInput.files[0]);
       formData.append("ratio", ratio);
 
-      document.getElementById('exportBar').classList.remove('visible');
-      loading.style.display = "block";
+      exportBar.hidden = true;
       btn.disabled = true;
-      btn.style.opacity = "0.5";
+      setStatus('decimating in blender');
+      window.__spin(true);
 
       try {
-        const response = await fetch("/optimize", {
-          method: "POST",
-          body: formData
-        });
+        const response = await fetch("/optimize", { method: "POST", body: formData });
 
         if (!response.ok) {
-          const errData = await response.json();
-          throw new Error(errData.detail || "Optimization failed on server.");
+          let detail = "optimization failed on the server";
+          try { detail = (await response.json()).detail || detail; } catch (_) {}
+          throw new Error(detail);
         }
 
         const data = await response.json();
-        
-        // 1. Update 3D Viewers with cache busting
+
+        // 1. Models
         document.getElementById('originalViewer').src = data.original_url + "?t=" + Date.now();
         document.getElementById('optimizedViewer').src = data.optimized_url + "?t=" + Date.now();
 
-        // 2. Populate Original Stats
+        // 2. Original stats
         document.getElementById('orig-vertices').innerText = data.original_features.vertex_count.toLocaleString();
         document.getElementById('orig-faces').innerText = data.original_features.face_count.toLocaleString();
         document.getElementById('orig-area').innerText = data.original_features.surface_area.toFixed(4);
-        document.getElementById('orig-bbox').innerText = 
-          `${data.original_features.bounding_box_x.toFixed(2)}m × ${data.original_features.bounding_box_y.toFixed(2)}m × ${data.original_features.bounding_box_z.toFixed(2)}m`;
+        document.getElementById('orig-bbox').innerText =
+          `${data.original_features.bounding_box_x.toFixed(2)} × ${data.original_features.bounding_box_y.toFixed(2)} × ${data.original_features.bounding_box_z.toFixed(2)} m`;
 
-        // 3. Populate Optimized Stats
+        // 3. Optimized stats
         document.getElementById('opt-vertices').innerText = data.optimized_features.vertex_count.toLocaleString();
         document.getElementById('opt-faces').innerText = data.optimized_features.face_count.toLocaleString();
         document.getElementById('opt-area').innerText = data.optimized_features.surface_area.toFixed(4);
         document.getElementById('opt-reduction').innerText = `-${data.polygon_reduction_percent}%`;
-        document.getElementById('optCardTitle').innerText = `OPTIMIZED MODEL (-${data.polygon_reduction_percent}%)`;
+        document.getElementById('optTag').innerText = `-${data.polygon_reduction_percent}% faces`;
 
-        // 4. Reveal the export bar
-        const outName = data.optimized_url.split('/').pop();
+        // 4. Reveal results + export
+        const results = document.getElementById('results');
+        results.classList.add('on');
+        document.getElementById('space').classList.add('recede');
+        setTimeout(() => results.classList.add('settled'), 1200);
+        const outName = decodeURIComponent(data.optimized_url.split('/').pop());
         const dlBtn = document.getElementById('downloadBtn');
         dlBtn.href = data.optimized_url;
-        dlBtn.setAttribute('download', decodeURIComponent(outName));
-        document.getElementById('exportMeta').innerText =
-          `${decodeURIComponent(outName)} // GLB // ${data.optimized_features.face_count.toLocaleString()} FACES // -${data.polygon_reduction_percent}%`;
-        document.getElementById('exportBar').classList.add('visible');
+        dlBtn.setAttribute('download', outName);
 
-        // Append file size once the server reports it
+        const meta = document.getElementById('exportMeta');
+        meta.innerHTML = `<b>${outName}</b> · glb · ${data.optimized_features.face_count.toLocaleString()} faces`;
+        exportBar.hidden = false;
+        setStatus('');
+
         try {
           const head = await fetch(data.optimized_url, { method: "HEAD" });
           const bytes = parseInt(head.headers.get("content-length"), 10);
           if (bytes > 0) {
-            const size = bytes > 1048576
-              ? `${(bytes / 1048576).toFixed(2)} MB`
-              : `${(bytes / 1024).toFixed(1)} KB`;
-            document.getElementById('exportMeta').innerText += ` // ${size}`;
+            const size = bytes > 1048576 ? `${(bytes / 1048576).toFixed(2)} MB` : `${(bytes / 1024).toFixed(1)} KB`;
+            meta.innerHTML += ` · ${size}`;
           }
         } catch (_) { /* size is optional */ }
 
+        document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
       } catch (err) {
-        alert("System Execution Fault: " + err.message);
+        setStatus(err.message, true);
       } finally {
-        loading.style.display = "none";
+        window.__spin(false);
         btn.disabled = false;
-        btn.style.opacity = "1";
       }
     }
   </script>
