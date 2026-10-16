@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600" width="1000" height="600" font-family="Arial, Helvetica, sans-serif">
+  <style>
+    .t { fill: #1a1a1a; }
+    .muted { fill: #666; }
+    .uc { fill: #ffffff; stroke: #333; stroke-width: 1.4; }
+    .line { stroke: #555; stroke-width: 1.2; fill: none; }
+    .dash { stroke: #777; stroke-width: 1.1; fill: none; stroke-dasharray: 6 4; }
+    .fig { stroke: #1a1a1a; stroke-width: 1.6; fill: none; }
+  </style>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3.5" orient="auto">
+      <path d="M0,0 L9,3.5 L0,7" fill="none" stroke="#777" stroke-width="1.1"/>
+    </marker>
+  </defs>
+  <rect width="1000" height="600" fill="#ffffff"/>
+
+  <text x="500" y="36" class="t" font-size="19" font-weight="bold" text-anchor="middle">Use Case Diagram — 3D Asset Optimization Engine</text>
+
+  <!-- system boundary -->
+  <rect x="300" y="66" width="400" height="500" fill="#fafafa" stroke="#333" stroke-width="1.4"/>
+  <text x="500" y="90" class="t" font-size="13" font-weight="bold" text-anchor="middle">3D Asset Optimization Engine</text>
+
+  <!-- use cases: artist band (top) -->
+  <g class="uc">
+    <ellipse cx="500" cy="135" rx="148" ry="25"/>
+    <ellipse cx="500" cy="196" rx="148" ry="25"/>
+    <ellipse cx="500" cy="257" rx="148" ry="25"/>
+    <ellipse cx="500" cy="318" rx="148" ry="25"/>
+  </g>
+  <!-- use cases: engine / system band (bottom) -->
+  <g class="uc">
+    <ellipse cx="500" cy="392" rx="148" ry="25"/>
+    <ellipse cx="500" cy="459" rx="148" ry="25"/>
+    <ellipse cx="500" cy="526" rx="148" ry="25"/>
+  </g>
+
+  <g class="t" font-size="13" text-anchor="middle">
+    <text x="500" y="140">Upload 3D asset</text>
+    <text x="500" y="201">Select target density</text>
+    <text x="500" y="262">Compare original vs optimized</text>
+    <text x="500" y="323">Download optimized asset</text>
+    <text x="500" y="397">Optimize mesh via REST API</text>
+    <text x="500" y="464">Decimate mesh</text>
+    <text x="500" y="531">Check service health</text>
+  </g>
+
+  <!-- actor: artist -->
+  <g transform="translate(130,150)">
+    <circle cx="0" cy="0" r="13" class="fig"/>
+    <line x1="0" y1="13" x2="0" y2="48" class="fig"/>
+    <line x1="-20" y1="25" x2="20" y2="25" class="fig"/>
+    <line x1="0" y1="48" x2="-16" y2="75" class="fig"/>
+    <line x1="0" y1="48" x2="16" y2="75" class="fig"/>
+    <text x="0" y="95" class="t" font-size="13" font-weight="bold" text-anchor="middle">Artist / Student</text>
+    <text x="0" y="112" class="muted" font-size="11" text-anchor="middle">browser user</text>
+  </g>
+
+  <!-- actor: engine -->
+  <g transform="translate(130,420)">
+    <circle cx="0" cy="0" r="13" class="fig"/>
+    <line x1="0" y1="13" x2="0" y2="48" class="fig"/>
+    <line x1="-20" y1="25" x2="20" y2="25" class="fig"/>
+    <line x1="0" y1="48" x2="-16" y2="75" class="fig"/>
+    <line x1="0" y1="48" x2="16" y2="75" class="fig"/>
+    <text x="0" y="95" class="t" font-size="13" font-weight="bold" text-anchor="middle">Game Engine</text>
+    <text x="0" y="112" class="muted" font-size="11" text-anchor="middle">Unreal / build pipeline</text>
+  </g>
+
+  <!-- actor: blender -->
+  <g transform="translate(880,440)">
+    <circle cx="0" cy="0" r="13" class="fig"/>
+    <line x1="0" y1="13" x2="0" y2="48" class="fig"/>
+    <line x1="-20" y1="25" x2="20" y2="25" class="fig"/>
+    <line x1="0" y1="48" x2="-16" y2="75" class="fig"/>
+    <line x1="0" y1="48" x2="16" y2="75" class="fig"/>
+    <text x="0" y="95" class="t" font-size="13" font-weight="bold" text-anchor="middle">Blender</text>
+    <text x="0" y="112" class="muted" font-size="11" text-anchor="middle">«external system»</text>
+  </g>
+
+  <!-- associations: artist (fan to the top band only) -->
+  <g class="line">
+    <path d="M156 160 L 356 139"/>
+    <path d="M156 172 L 356 192"/>
+    <path d="M154 186 L 358 252"/>
+    <path d="M152 198 L 358 311"/>
+  </g>
+
+  <!-- associations: engine (bottom band only) -->
+  <g class="line">
+    <path d="M154 432 L 358 398"/>
+    <path d="M156 444 L 360 460"/>
+    <path d="M154 456 L 358 518"/>
+  </g>
+
+  <!-- blender performs the decimation -->
+  <path d="M648 462 L 852 455" class="line"/>
+
+  <!-- include: optimizing via the API includes decimation -->
+  <path d="M500 417 L 500 432" class="dash" marker-end="url(#arrow)"/>
+  <text x="566" y="430" class="muted" font-size="11" text-anchor="middle">«include»</text>
+</svg>

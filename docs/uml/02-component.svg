@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1060 700" width="1060" height="700" font-family="Arial, Helvetica, sans-serif">
+  <style>
+    .t { fill: #1a1a1a; }
+    .muted { fill: #6b6b6b; }
+    .box { fill: #ffffff; stroke: #333; stroke-width: 1.4; }
+    .ext { fill: #f1f1f1; stroke: #555; stroke-width: 1.4; stroke-dasharray: 5 3; }
+    .grp { fill: #fbfbfb; stroke: #999; stroke-width: 1.2; stroke-dasharray: 6 4; }
+    .arr { stroke: #444; stroke-width: 1.3; fill: none; marker-end: url(#a); }
+    .darr { stroke: #777; stroke-width: 1.2; fill: none; stroke-dasharray: 5 4; marker-end: url(#a2); }
+  </style>
+  <defs>
+    <marker id="a" markerWidth="10" markerHeight="10" refX="9" refY="3.5" orient="auto">
+      <path d="M0,0 L9,3.5 L0,7" fill="none" stroke="#444" stroke-width="1.3"/>
+    </marker>
+    <marker id="a2" markerWidth="10" markerHeight="10" refX="9" refY="3.5" orient="auto">
+      <path d="M0,0 L9,3.5 L0,7" fill="none" stroke="#777" stroke-width="1.2"/>
+    </marker>
+  </defs>
+  <rect width="1060" height="700" fill="#ffffff"/>
+  <text x="530" y="36" class="t" font-size="19" font-weight="bold" text-anchor="middle">Component Diagram — 3D Asset Optimization Engine</text>
+
+  <!-- clients group -->
+  <rect x="40" y="70" width="250" height="330" class="grp" rx="4"/>
+  <text x="165" y="92" class="muted" font-size="12" font-weight="bold" text-anchor="middle">CLIENTS</text>
+
+  <rect x="62" y="110" width="206" height="72" class="box" rx="3"/>
+  <text x="165" y="132" class="muted" font-size="11" text-anchor="middle">«component»</text>
+  <text x="165" y="150" class="t" font-size="13" font-weight="bold" text-anchor="middle">Browser UI</text>
+  <text x="165" y="168" class="muted" font-size="11" text-anchor="middle">frontend/index.html</text>
+
+  <rect x="62" y="202" width="206" height="72" class="box" rx="3"/>
+  <text x="165" y="224" class="muted" font-size="11" text-anchor="middle">«component»</text>
+  <text x="165" y="242" class="t" font-size="13" font-weight="bold" text-anchor="middle">Python Client / CLI</text>
+  <text x="165" y="260" class="muted" font-size="11" text-anchor="middle">clients/python</text>
+
+  <rect x="62" y="294" width="206" height="72" class="box" rx="3"/>
+  <text x="165" y="316" class="muted" font-size="11" text-anchor="middle">«component»</text>
+  <text x="165" y="334" class="t" font-size="13" font-weight="bold" text-anchor="middle">Unreal Editor Script</text>
+  <text x="165" y="352" class="muted" font-size="11" text-anchor="middle">clients/unreal</text>
+
+  <!-- server group -->
+  <rect x="356" y="70" width="350" height="470" class="grp" rx="4"/>
+  <text x="531" y="92" class="muted" font-size="12" font-weight="bold" text-anchor="middle">BACKEND (FastAPI)</text>
+
+  <rect x="394" y="110" width="282" height="76" class="box" rx="3"/>
+  <text x="535" y="132" class="muted" font-size="11" text-anchor="middle">«component»</text>
+  <text x="535" y="150" class="t" font-size="13" font-weight="bold" text-anchor="middle">Web Routes</text>
+  <text x="535" y="170" class="muted" font-size="11" text-anchor="middle">main.py — GET / , POST /optimize</text>
+
+  <rect x="394" y="206" width="282" height="76" class="box" rx="3"/>
+  <text x="535" y="228" class="muted" font-size="11" text-anchor="middle">«component»</text>
+  <text x="535" y="246" class="t" font-size="13" font-weight="bold" text-anchor="middle">Public API v1</text>
+  <text x="535" y="266" class="muted" font-size="11" text-anchor="middle">api.py — /api/v1/optimize, /health</text>
+
+  <rect x="394" y="302" width="282" height="76" class="box" rx="3"/>
+  <text x="535" y="324" class="muted" font-size="11" text-anchor="middle">«component»</text>
+  <text x="535" y="342" class="t" font-size="13" font-weight="bold" text-anchor="middle">Pipeline</text>
+  <text x="535" y="362" class="muted" font-size="11" text-anchor="middle">core/pipeline.py — orchestration</text>
+
+  <rect x="394" y="398" width="282" height="76" class="box" rx="3"/>
+  <text x="535" y="420" class="muted" font-size="11" text-anchor="middle">«component»</text>
+  <text x="535" y="438" class="t" font-size="13" font-weight="bold" text-anchor="middle">Feature Extractor</text>
+  <text x="535" y="458" class="muted" font-size="11" text-anchor="middle">core/feature_extractor.py — trimesh</text>
+
+  <rect x="394" y="492" width="282" height="34" class="box" rx="3"/>
+  <text x="535" y="514" class="t" font-size="12" text-anchor="middle">config.py — paths, limits, Blender location</text>
+
+  <!-- external -->
+  <rect x="770" y="302" width="240" height="90" class="ext" rx="3"/>
+  <text x="890" y="326" class="muted" font-size="11" text-anchor="middle">«external system»</text>
+  <text x="890" y="346" class="t" font-size="13" font-weight="bold" text-anchor="middle">Blender (headless)</text>
+  <text x="890" y="366" class="muted" font-size="11" text-anchor="middle">blender_scripts/process_mesh.py</text>
+  <text x="890" y="382" class="muted" font-size="11" text-anchor="middle">decimate · clean · export</text>
+
+  <!-- storage -->
+  <rect x="770" y="140" width="240" height="90" class="box" rx="3"/>
+  <text x="890" y="164" class="muted" font-size="11" text-anchor="middle">«artifact store»</text>
+  <text x="890" y="184" class="t" font-size="13" font-weight="bold" text-anchor="middle">Storage</text>
+  <text x="890" y="204" class="muted" font-size="11" text-anchor="middle">storage/inputs · storage/outputs</text>
+  <text x="890" y="220" class="muted" font-size="11" text-anchor="middle">served at /storage</text>
+
+  <!-- client -> server arrows -->
+  <path d="M268 146 L 392 146" class="arr"/>
+  <text x="330" y="138" class="muted" font-size="10.5" text-anchor="middle">HTTP</text>
+
+  <path d="M268 238 C 330 238, 340 244, 392 244" class="arr"/>
+  <path d="M268 330 C 340 330, 350 256, 392 250" class="arr"/>
+  <text x="330" y="292" class="muted" font-size="10.5" text-anchor="middle">HTTPS / REST</text>
+
+  <!-- internal arrows -->
+  <path d="M394 160 L 374 160 L 374 330 L 392 330" class="arr"/>
+  <path d="M535 282 L 535 300" class="arr"/>
+  <text x="394" y="250" class="muted" font-size="10.5" text-anchor="middle">calls</text>
+  <text x="575" y="296" class="muted" font-size="10.5" text-anchor="middle">calls</text>
+
+  <path d="M535 378 L 535 396" class="arr"/>
+  <text x="575" y="392" class="muted" font-size="10.5" text-anchor="middle">measures</text>
+
+  <path d="M676 340 L 768 344" class="arr"/>
+  <text x="722" y="332" class="muted" font-size="10.5" text-anchor="middle">subprocess</text>
+
+  <path d="M676 320 C 730 300, 740 220, 768 196" class="darr"/>
+  <text x="762" y="268" class="muted" font-size="10.5" text-anchor="middle">reads / writes</text>
+
+  <path d="M860 302 L 860 234" class="darr"/>
+  <text x="905" y="268" class="muted" font-size="10.5" text-anchor="middle">writes .glb</text>
+
+  <path d="M676 150 C 720 150, 740 150, 768 168" class="darr"/>
+  <text x="730" y="128" class="muted" font-size="10.5" text-anchor="middle">serves</text>
+</svg>

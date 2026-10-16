@@ -1,0 +1,153 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 760" width="1100" height="760" font-family="Arial, Helvetica, sans-serif">
+  <style>
+    .t { fill: #1a1a1a; }
+    .muted { fill: #6b6b6b; }
+    .cls { fill: #ffffff; stroke: #333; stroke-width: 1.4; }
+    .sep { stroke: #333; stroke-width: 1.1; }
+    .mono { font-family: "Courier New", monospace; font-size: 11px; fill: #333; }
+    .dep { stroke: #777; stroke-width: 1.2; fill: none; stroke-dasharray: 5 4; marker-end: url(#open); }
+    .gen { stroke: #333; stroke-width: 1.2; fill: none; }
+    .lbl { fill: #6b6b6b; font-size: 10.5px; }
+  </style>
+  <defs>
+    <marker id="open" markerWidth="11" markerHeight="11" refX="10" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8" fill="none" stroke="#777" stroke-width="1.2"/>
+    </marker>
+    <marker id="tri" markerWidth="13" markerHeight="13" refX="12" refY="6" orient="auto">
+      <path d="M1,1 L12,6 L1,11 Z" fill="#ffffff" stroke="#333" stroke-width="1.2"/>
+    </marker>
+  </defs>
+  <rect width="1100" height="760" fill="#ffffff"/>
+  <text x="550" y="36" class="t" font-size="19" font-weight="bold" text-anchor="middle">Class Diagram — Core Modules</text>
+
+  <!-- (1,1) Client -->
+  <rect x="40" y="80" width="290" height="150" class="cls" rx="3"/>
+  <text x="185" y="102" class="t" font-size="13.5" font-weight="bold" text-anchor="middle">MeshOptimizerClient</text>
+  <text x="185" y="118" class="muted" font-size="10.5" text-anchor="middle">clients/python/mesh_optimizer.py</text>
+  <line x1="40" y1="128" x2="330" y2="128" class="sep"/>
+  <text x="52" y="147" class="mono">+ health(url) : dict</text>
+  <text x="52" y="165" class="mono">+ optimize_file(path, out,</text>
+  <text x="52" y="180" class="mono">      ratio, url, key) : dict</text>
+  <text x="52" y="198" class="mono">- _encode_multipart(...)</text>
+  <line x1="40" y1="206" x2="330" y2="206" class="sep"/>
+  <text x="52" y="222" class="mono">OptimizerError «exception»</text>
+
+  <!-- (2,1) API Router -->
+  <rect x="400" y="80" width="290" height="150" class="cls" rx="3"/>
+  <text x="545" y="102" class="t" font-size="13.5" font-weight="bold" text-anchor="middle">APIRouter (v1)</text>
+  <text x="545" y="118" class="muted" font-size="10.5" text-anchor="middle">backend/api.py</text>
+  <line x1="400" y1="128" x2="690" y2="128" class="sep"/>
+  <text x="412" y="147" class="mono">+ health() : HealthResponse</text>
+  <text x="412" y="165" class="mono">+ optimize(file, ratio,</text>
+  <text x="412" y="180" class="mono">      format) : Response</text>
+  <text x="412" y="198" class="mono">- require_key(x_api_key)</text>
+  <text x="412" y="219" class="lbl">routes: /api/v1/optimize, /api/v1/health</text>
+
+  <!-- (3,1) Pipeline -->
+  <rect x="760" y="80" width="290" height="170" class="cls" rx="3"/>
+  <text x="905" y="102" class="t" font-size="13.5" font-weight="bold" text-anchor="middle">Pipeline</text>
+  <text x="905" y="118" class="muted" font-size="10.5" text-anchor="middle">backend/core/pipeline.py</text>
+  <line x1="760" y1="128" x2="1050" y2="128" class="sep"/>
+  <text x="772" y="147" class="mono">+ MIN_RATIO : float = 0.01</text>
+  <text x="772" y="165" class="mono">+ MAX_RATIO : float = 1.0</text>
+  <line x1="760" y1="175" x2="1050" y2="175" class="sep"/>
+  <text x="772" y="194" class="mono">+ validate_ratio(r) : float</text>
+  <text x="772" y="212" class="mono">+ optimize(in, out, ratio)</text>
+  <text x="772" y="227" class="mono">      : dict</text>
+  <text x="772" y="243" class="lbl">runs Blender as a subprocess</text>
+
+  <!-- (2,2) Web App -->
+  <rect x="400" y="300" width="290" height="140" class="cls" rx="3"/>
+  <text x="545" y="322" class="t" font-size="13.5" font-weight="bold" text-anchor="middle">WebApp</text>
+  <text x="545" y="338" class="muted" font-size="10.5" text-anchor="middle">backend/main.py</text>
+  <line x1="400" y1="348" x2="690" y2="348" class="sep"/>
+  <text x="412" y="367" class="mono">+ serve_ui() : HTML</text>
+  <text x="412" y="385" class="mono">+ optimize_model(file, ratio)</text>
+  <text x="412" y="403" class="mono">- safe_name(filename) : str</text>
+  <text x="412" y="421" class="mono">- prune(dir, keep)</text>
+
+  <!-- (3,2) FeatureExtractor -->
+  <rect x="760" y="320" width="290" height="130" class="cls" rx="3"/>
+  <text x="905" y="342" class="t" font-size="13.5" font-weight="bold" text-anchor="middle">FeatureExtractor</text>
+  <text x="905" y="358" class="muted" font-size="10.5" text-anchor="middle">backend/core/feature_extractor.py</text>
+  <line x1="760" y1="368" x2="1050" y2="368" class="sep"/>
+  <text x="772" y="387" class="mono">+ extract_mesh_features(path)</text>
+  <text x="772" y="402" class="mono">      : dict</text>
+  <text x="772" y="421" class="lbl">vertex_count, face_count, surface_area,</text>
+  <text x="772" y="436" class="lbl">volume, is_watertight, bbox, aspect_ratio</text>
+
+  <!-- (1,3) Config -->
+  <rect x="40" y="500" width="290" height="130" class="cls" rx="3"/>
+  <text x="185" y="522" class="t" font-size="13.5" font-weight="bold" text-anchor="middle">Config</text>
+  <text x="185" y="538" class="muted" font-size="10.5" text-anchor="middle">backend/config.py</text>
+  <line x1="40" y1="548" x2="330" y2="548" class="sep"/>
+  <text x="52" y="567" class="mono">BLENDER_PATH, STORAGE_DIR</text>
+  <text x="52" y="585" class="mono">HOST, PORT, API_KEY</text>
+  <text x="52" y="603" class="mono">MAX_UPLOAD_MB, KEEP_FILES</text>
+  <text x="52" y="621" class="mono">BLENDER_TIMEOUT</text>
+
+  <!-- (2,3) Schemas -->
+  <rect x="400" y="500" width="290" height="170" class="cls" rx="3"/>
+  <text x="545" y="522" class="t" font-size="13.5" font-weight="bold" text-anchor="middle">API Schemas (pydantic)</text>
+  <text x="545" y="538" class="muted" font-size="10.5" text-anchor="middle">backend/api.py</text>
+  <line x1="400" y1="548" x2="690" y2="548" class="sep"/>
+  <text x="412" y="567" class="mono">MeshFeatures</text>
+  <text x="424" y="583" class="lbl">vertex_count, face_count, area, bbox</text>
+  <text x="412" y="605" class="mono">OptimizeResponse</text>
+  <text x="424" y="621" class="lbl">job_id, ratio, reduction %, download_url</text>
+  <text x="412" y="643" class="mono">HealthResponse</text>
+  <text x="424" y="659" class="lbl">status, blender_version, limits</text>
+
+  <!-- (3,3) Exceptions -->
+  <rect x="760" y="500" width="290" height="62" class="cls" rx="3"/>
+  <text x="905" y="522" class="t" font-size="13" font-weight="bold" text-anchor="middle">PipelineError</text>
+  <text x="905" y="540" class="muted" font-size="10.5" text-anchor="middle">«exception» — base of all failures</text>
+  <text x="905" y="555" class="lbl" text-anchor="middle">raised by Pipeline, mapped to HTTP codes</text>
+
+  <rect x="760" y="630" width="290" height="36" class="cls" rx="3"/>
+  <text x="772" y="653" class="mono">MeshParseError</text>
+  <text x="1038" y="653" class="lbl" text-anchor="end">→ HTTP 400</text>
+
+  <rect x="760" y="674" width="290" height="36" class="cls" rx="3"/>
+  <text x="772" y="697" class="mono">BlenderError</text>
+  <text x="1038" y="697" class="lbl" text-anchor="end">→ HTTP 500</text>
+
+  <rect x="760" y="718" width="290" height="36" class="cls" rx="3"/>
+  <text x="772" y="741" class="mono">BlenderTimeout</text>
+  <text x="1038" y="741" class="lbl" text-anchor="end">→ HTTP 504</text>
+
+  <!-- generalizations (exceptions) -->
+  <g class="gen">
+    <path d="M740 648 L 722 648 L 722 544 L 758 544" marker-end="url(#tri)"/>
+    <path d="M760 692 L 722 692"/>
+    <path d="M760 736 L 722 736"/>
+    <path d="M740 648 L 760 648"/>
+  </g>
+
+  <!-- dependencies -->
+  <path d="M330 150 L 396 150" class="dep"/>
+  <text x="363" y="142" class="lbl" text-anchor="middle">HTTP</text>
+
+  <path d="M690 150 L 756 150" class="dep"/>
+  <text x="723" y="142" class="lbl" text-anchor="middle">calls</text>
+
+  <path d="M690 350 L 722 350 L 722 215 L 756 215" class="dep"/>
+  <text x="726" y="300" class="lbl">calls</text>
+
+  <path d="M905 250 L 905 316" class="dep"/>
+  <text x="950" y="286" class="lbl" text-anchor="middle">measures with</text>
+
+  <path d="M1050 230 L 1072 230 L 1072 530 L 1054 530" class="dep"/>
+  <text x="1068" y="400" class="lbl" text-anchor="middle" transform="rotate(-90 1068 400)">raises</text>
+
+  <path d="M545 230 L 545 296" class="dep"/>
+  <text x="590" y="266" class="lbl" text-anchor="middle">shares app</text>
+
+  <path d="M400 210 L 368 210 L 368 560 L 396 560" class="dep"/>
+  <text x="374" y="400" class="lbl" transform="rotate(-90 374 400)" text-anchor="middle">returns</text>
+
+  <path d="M330 540 L 364 540 L 364 420 L 396 420" class="dep"/>
+  <text x="352" y="470" class="lbl" transform="rotate(-90 352 470)" text-anchor="middle">reads</text>
+
+  <text x="185" y="664" class="lbl" text-anchor="middle">read by every backend module</text>
+</svg>
