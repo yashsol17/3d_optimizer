@@ -1,19 +1,39 @@
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
-import subprocess
-import shutil
+from fastapi.middleware.cors import CORSMiddleware
 import os
 import re
-import json
-from core.feature_extractor import extract_mesh_features
+from api import router as api_router
+from core import pipeline
 from config import (
-    BLENDER_PATH, STORAGE_DIR, INPUTS_DIR, OUTPUTS_DIR,
-    FRONTEND_DIR, PROCESS_MESH_SCRIPT, HOST, PORT,
-    MAX_UPLOAD_MB, KEEP_FILES,
+    STORAGE_DIR, INPUTS_DIR, OUTPUTS_DIR,
+    FRONTEND_DIR, HOST, PORT,
+    MAX_UPLOAD_MB, KEEP_FILES, API_VERSION,
 )
 
-app = FastAPI(title="3D Model Optimization Engine API")
+app = FastAPI(
+    title="3D Asset Optimization Engine",
+    version=API_VERSION,
+    description=(
+        "Mesh decimation as a service. The browser UI lives at `/`; engines and "
+        "build pipelines should use the versioned routes under `/api/v1`."
+    ),
+)
+
+# Engines and tools call this cross-origin; the API is read-only on their data.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=os.environ.get("CORS_ORIGINS", "*").split(","),
+    allow_methods=["GET", "POST"],
+    allow_headers=["*"],
+    expose_headers=[
+        "X-Mesh-Job-Id", "X-Mesh-Ratio", "X-Mesh-Reduction-Percent",
+        "X-Mesh-Original-Faces", "X-Mesh-Optimized-Faces", "X-Mesh-Processing-Seconds",
+    ],
+)
+
+app.include_router(api_router)
 
 os.makedirs(INPUTS_DIR, exist_ok=True)
 os.makedirs(OUTPUTS_DIR, exist_ok=True)
@@ -80,40 +100,20 @@ async def optimize_model(
                 )
             buffer.write(chunk)
 
-    # Step 1: Extract Original Features
+    # Same pipeline the API uses, so the UI and integrations never diverge
     try:
-        features = extract_mesh_features(input_path)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Failed to parse input 3D mesh: {str(e)}")
+        report = pipeline.optimize(input_path, output_path, ratio)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except pipeline.MeshParseError as exc:
+        raise HTTPException(status_code=400, detail=f"Failed to parse input 3D mesh: {exc}")
+    except pipeline.BlenderTimeout as exc:
+        raise HTTPException(status_code=504, detail=str(exc))
+    except pipeline.BlenderError as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
 
-    # Step 2: Invoke Blender Process
-    cmd = [
-        BLENDER_PATH,
-        "--background",
-        "--python", PROCESS_MESH_SCRIPT,
-        "--",
-        "--input", input_path,
-        "--output", output_path,
-        "--ratio", str(ratio)
-    ]
-
-    try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
-    except subprocess.TimeoutExpired:
-        raise HTTPException(
-            status_code=504,
-            detail="Blender took too long on this model. Try a smaller asset.",
-        )
-
-    if not os.path.exists(output_path):
-        tail = (result.stderr or "").strip().splitlines()[-4:]
-        raise HTTPException(
-            status_code=500,
-            detail="Blender failed to produce an output file. " + " ".join(tail)
-        )
-
-    # Step 3: Extract Optimized Features
-    optimized_features = extract_mesh_features(output_path)
+    features = report["original_features"]
+    optimized_features = report["optimized_features"]
 
     prune(INPUTS_DIR)
     prune(OUTPUTS_DIR)
@@ -124,7 +124,7 @@ async def optimize_model(
         "optimized_url": f"/storage/outputs/{output_filename}",
         "original_features": features,
         "optimized_features": optimized_features,
-        "polygon_reduction_percent": round((1 - (optimized_features['face_count'] / features['face_count'])) * 100, 2)
+        "polygon_reduction_percent": report["polygon_reduction_percent"],
     }
 
 if __name__ == "__main__":
