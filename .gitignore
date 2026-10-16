@@ -12,3 +12,8 @@ backend/storage/outputs/*
 
 # Local tooling
 .claude/
+
+# Desktop build artifacts
+desktop/build/
+desktop/dist/
+desktop/*.spec

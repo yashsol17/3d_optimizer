@@ -695,6 +695,7 @@
 
     /* ------------------------------------------------ starfield + wireframe */
     (function space() {
+     try {
       const canvas = document.getElementById('space');
       const ctx = canvas.getContext('2d');
       const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -706,6 +707,7 @@
 
       // Soft coloured clouds, painted once and then drifted — depth without cost.
       function buildNebula() {
+        if (w < 1 || h < 1) return;          // nothing to paint into yet
         nebula.width = w; nebula.height = h;
         nctx.clearRect(0, 0, w, h);
         const blobs = [
@@ -739,8 +741,8 @@
 
       function resize() {
         dpr = Math.min(window.devicePixelRatio || 1, 2);
-        w = window.innerWidth;
-        h = window.innerHeight;
+        w = Math.max(1, window.innerWidth);
+        h = Math.max(1, window.innerHeight);
         canvas.width = w * dpr;
         canvas.height = h * dpr;
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -824,9 +826,13 @@
 
         ctx.clearRect(0, 0, w, h);
 
-        ctx.drawImage(nebula,
-          Math.sin(t * 0.0006) * 26 + mouse.x * 14,
-          Math.cos(t * 0.0005) * 20 + mouse.y * 10);
+        if (nebula.width && nebula.height) {
+          ctx.drawImage(nebula,
+            Math.sin(t * 0.0006) * 26 + mouse.x * 14,
+            Math.cos(t * 0.0005) * 20 + mouse.y * 10);
+        } else {
+          buildNebula();                     // window had no size at startup
+        }
 
         for (const s of stars) {
           const px = s.x + mouse.x * s.z * 30;
@@ -865,8 +871,19 @@
         const r = Math.min(w, h) * (w < 760 ? 0.3 : 0.26);
         globe(w / 2 + mouse.x * 16, h * 0.46 + mouse.y * 12, r);
 
-        requestAnimationFrame(frame);
+        requestAnimationFrame(safeFrame);
       }
+
+      // Decoration must never break the interface: if anything in the draw
+      // loop throws, drop the background and leave the app working.
+      const safeFrame = function () {
+        try {
+          frame();
+        } catch (err) {
+          console.warn('background disabled:', err);
+          canvas.style.display = 'none';
+        }
+      };
 
       window.addEventListener('resize', resize, { passive: true });
       window.addEventListener('pointermove', function (e) {
@@ -876,7 +893,7 @@
 
       resize();
       if (reduced) {
-        ctx.drawImage(nebula, 0, 0);
+        if (nebula.width && nebula.height) ctx.drawImage(nebula, 0, 0);
         for (const s of stars) {
           ctx.globalAlpha = 0.35 + s.z * 0.45;
           ctx.fillStyle = s.warm ? '#f0c3ad' : '#9a9390';
@@ -885,11 +902,17 @@
         ctx.globalAlpha = 1;
         globe(w / 2, h * 0.46, Math.min(w, h) * 0.26);
       } else {
-        frame();
+        safeFrame();
       }
 
       // The globe spins faster while Blender is working
       window.__spin = function (fast) { speed = fast ? 0.009 : 0.0016; };
+     } catch (err) {
+      console.warn('background unavailable:', err);
+      const c = document.getElementById('space');
+      if (c) c.style.display = 'none';
+      window.__spin = function () {};        // the app still calls this
+     }
     })();
 
     /* ------------------------------------------------------- file picking */
